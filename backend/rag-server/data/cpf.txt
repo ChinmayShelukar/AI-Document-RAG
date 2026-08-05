@@ -1,0 +1,2 @@
+Um CPF válido deve conter 11 dígitos e passar por uma verificação de dois dígitos verificadores.
+Documentos emitidos por órgãos estrangeiros devem conter tradução juramentada e apostilamento.

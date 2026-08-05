@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+target/
+dist/
+build/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Env / secrets
+.env
+**/.env
+!**/.env.example
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
