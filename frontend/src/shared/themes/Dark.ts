@@ -16,8 +16,8 @@ export const DarkTheme = createTheme({
       contrastText: "#ffffff",
     },
     background: {
-      default: "#121212", // cinza quase preto, confortável para o fundo principal
-      paper: "#1E1E1E", // cinza escuro mais suave para superfícies
+      default: "#121212", // near-black gray, comfortable for the main background
+      paper: "#1E1E1E", // softer dark gray for surfaces
     },
     text: {
       primary: "#E0E0E0",

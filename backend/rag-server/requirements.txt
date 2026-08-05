@@ -1,6 +1,9 @@
 python-dotenv
 fastapi
 uvicorn
+python-multipart
 llama-index
-llama-index-llms-ollama
+llama-index-llms-groq
 llama-index-embeddings-huggingface
+pypdf
+docx2txt

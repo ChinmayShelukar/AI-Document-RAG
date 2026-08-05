@@ -1,27 +1,27 @@
-# Base CUDA image com suporte a GPU
-FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+# CPU-only Python base — Groq runs the LLM in the cloud, so no GPU is needed.
+# Embeddings run on CPU via the HuggingFace model.
+FROM python:3.11-slim
 
-# Instala Python e utilitários básicos
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip git curl && \
-    ln -sf python3 /usr/bin/python && \
-    ln -sf pip3 /usr/bin/pip
+# Install minimal build/runtime utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Atualiza pip e instala PyTorch com suporte CUDA
+# Upgrade pip and install CPU-only PyTorch (much smaller than the CUDA build)
 RUN pip install --upgrade pip
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Copia o conteúdo da pasta `rag-server` para dentro do container
+# Copy the rag-server folder into the container
 COPY rag-server /app
 
-# Define o diretório de trabalho
+# Set the working directory
 WORKDIR /app
 
-# Instala as dependências do projeto
+# Install project dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expõe a porta da aplicação
+# Expose the application port
 EXPOSE 5000
 
-# Comando para iniciar a aplicação FastAPI com Uvicorn
+# Start the FastAPI app with Uvicorn
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]

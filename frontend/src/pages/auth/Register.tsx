@@ -23,16 +23,16 @@ import { useNavigate } from "react-router-dom";
 
 const schema = yup
   .object({
-    name: yup.string().required("Nome é obrigatório"),
-    email: yup.string().email("Email inválido").required("Email é obrigatório"),
+    name: yup.string().required("Name is required"),
+    email: yup.string().email("Invalid email").required("Email is required"),
     password: yup
       .string()
-      .min(8, "A senha deve ter pelo menos 6 caracteres")
-      .required("Senha é obrigatória"),
+      .min(8, "Password must be at least 8 characters")
+      .required("Password is required"),
     confirmPassword: yup
       .string()
-      .oneOf([yup.ref("password")], "As senhas não coincidem")
-      .required("Confirmação de senha é obrigatória"),
+      .oneOf([yup.ref("password")], "Passwords do not match")
+      .required("Password confirmation is required"),
   })
   .required();
 
@@ -50,8 +50,8 @@ export const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(""); // Mensagem do Snackbar
-  const [openSnackbar, setOpenSnackbar] = useState(false); // Controle do Snackbar
+  const [errorMessage, setErrorMessage] = useState(""); // Snackbar message
+  const [openSnackbar, setOpenSnackbar] = useState(false); // Snackbar control
 
   const navigate = useNavigate();
   const theme = useTheme();
@@ -69,11 +69,11 @@ export const Register = () => {
         navigate("/chat");
       }
     } catch (error: any) {
-      console.error("Erro ao registrar:", error);
-      // Pega a mensagem do erro, caso exista
+      console.error("Registration error:", error);
+      // Get the error message, if any
       const msg =
         error.response?.data?.message ||
-        "Ocorreu um erro ao registrar. Tente novamente.";
+        "An error occurred during registration. Please try again.";
       setErrorMessage(msg);
       setOpenSnackbar(true);
     } finally {
@@ -89,7 +89,7 @@ export const Register = () => {
       }}
     >
       <Grid container sx={{ height: "100%" }}>
-        {/* Coluna Esquerda (Formulário) */}
+        {/* Left column (Form) */}
         <Grid
           size={{ xs: 12, md: 8 }}
           sx={{
@@ -115,13 +115,13 @@ export const Register = () => {
             }}
           >
             <Typography variant="h5" align="center" gutterBottom>
-              Crie sua conta!
+              Create your account!
             </Typography>
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <TextField
                 fullWidth
-                label="Nome"
+                label="Name"
                 {...register("name")}
                 margin="normal"
                 error={!!errors.name}
@@ -140,7 +140,7 @@ export const Register = () => {
 
               <TextField
                 fullWidth
-                label="Senha"
+                label="Password"
                 type={showPassword ? "text" : "password"}
                 {...register("password")}
                 margin="normal"
@@ -163,7 +163,7 @@ export const Register = () => {
 
               <TextField
                 fullWidth
-                label="Confirmar Senha"
+                label="Confirm Password"
                 type={showConfirm ? "text" : "password"}
                 {...register("confirmPassword")}
                 margin="normal"
@@ -191,22 +191,22 @@ export const Register = () => {
                 sx={{ mt: 3, pt: 1.5 }}
                 disabled={isLoading}
               >
-                {isLoading ? "Criando conta..." : "Cadastrar"}
+                {isLoading ? "Creating account..." : "Sign up"}
               </Button>
             </form>
 
             <Box mt={2}>
               <Typography>
-                Já tem uma conta?{" "}
+                Already have an account?{" "}
                 <Link href="/" underline="hover">
-                  Clique aqui
+                  Click here
                 </Link>
               </Typography>
             </Box>
           </Paper>
         </Grid>
 
-        {/* Coluna Direita (Ilustração) */}
+        {/* Right column (Illustration) */}
         {!isMdDown && (
           <Grid
             size={{ xs: 12, md: 4 }}
@@ -243,14 +243,14 @@ export const Register = () => {
                 Check Docs
               </Typography>
               <Typography variant="subtitle1" mt={1}>
-                Cadastre-se e aproveite o poder da IA na documentação.
+                Sign up and harness the power of AI for your documents.
               </Typography>
             </Box>
           </Grid>
         )}
       </Grid>
 
-      {/* Snackbar de erro */}
+      {/* Error snackbar */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}

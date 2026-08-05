@@ -16,6 +16,7 @@ import {
   LightModeOutlined,
   DarkModeOutlined,
   Send,
+  AttachFile,
 } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../shared/services/api/config/axios.config";
@@ -72,7 +73,9 @@ export const ChatBot = () => {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [idCounter, setIdCounter] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const theme = useTheme();
   const navigate = useNavigate();
   const { toggleTheme } = useAppThemeContext();
@@ -101,7 +104,7 @@ export const ChatBot = () => {
 
       const botMessage: Message = {
         id: idCounter + 1,
-        message: response.data.answer || "Desculpe, não entendi.",
+        message: response.data.answer || "Sorry, I didn't understand.",
         sender: "bot",
       };
 
@@ -113,7 +116,7 @@ export const ChatBot = () => {
         ...prev,
         {
           id: idCounter + 1,
-          message: "Erro ao mandar mensagem, tente novamente mais tarde.",
+          message: "Error sending message, please try again later.",
           sender: "bot",
         },
       ]);
@@ -126,6 +129,34 @@ export const ChatBot = () => {
     if (e.key === "Enter") {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const pushBotMessage = (message: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: idCounter + 1, message, sender: "bot" },
+    ]);
+    setIdCounter((prev) => prev + 1);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await api.post("/documents/upload", formData);
+      pushBotMessage(
+        `Document "${response.data.filename}" indexed (${response.data.chunks} section(s)). You can now ask questions about it.`
+      );
+    } catch (error) {
+      pushBotMessage("Failed to upload the document, please try again.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -205,7 +236,7 @@ export const ChatBot = () => {
                 color: "#fff",
                 boxShadow: `0 0 10px ${theme.palette.info.main}`,
                 "& .MuiListItemIcon-root": {
-                  color: "#fff", // força o ícone ficar branco no hover
+                  color: "#fff", // force the icon to turn white on hover
                 },
               },
               px: 2,
@@ -225,7 +256,7 @@ export const ChatBot = () => {
                 <DarkModeOutlined />
               )}
             </ListItemIcon>
-            <ListItemText primary="Trocar Tema" />
+            <ListItemText primary="Switch Theme" />
           </ListItem>
 
           <ListItem
@@ -240,7 +271,7 @@ export const ChatBot = () => {
                 color: "#fff",
                 boxShadow: `0 0 10px ${theme.palette.error.main}`,
                 "& .MuiListItemIcon-root": {
-                  color: "#fff", // força o ícone ficar branco no hover
+                  color: "#fff", // force the icon to turn white on hover
                 },
               },
               px: 2,
@@ -256,7 +287,7 @@ export const ChatBot = () => {
             >
               <Logout />
             </ListItemIcon>
-            <ListItemText primary="Sair" />
+            <ListItemText primary="Log out" />
           </ListItem>
         </List>
       </Paper>
@@ -310,7 +341,7 @@ export const ChatBot = () => {
               alignItems="center"
             >
               <Typography variant="body2" color="text.secondary" mt={4}>
-                Envie uma pergunta para começar.
+                Send a question to get started.
               </Typography>
             </Box>
           ) : (
@@ -363,9 +394,16 @@ export const ChatBot = () => {
         </Box>
 
         <Paper sx={{ display: "flex", gap: 1, borderRadius: 3 }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            hidden
+            accept=".txt,.pdf,.docx,.md"
+            onChange={handleUpload}
+          />
           <TextField
             fullWidth
-            placeholder="Digite sua mensagem..."
+            placeholder="Type your message..."
             value={input}
             multiline
             minRows={1}
@@ -375,6 +413,16 @@ export const ChatBot = () => {
             variant="standard"
             InputProps={{
               disableUnderline: true,
+              startAdornment: (
+                <IconButton
+                  color="primary"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || loading}
+                  title="Upload a document"
+                >
+                  <AttachFile />
+                </IconButton>
+              ),
               endAdornment: (
                 <IconButton
                   color="primary"

@@ -23,11 +23,11 @@ import { useNavigate } from "react-router-dom";
 
 const schema = yup
   .object({
-    email: yup.string().email("Email inválido").required("Email é obrigatório"),
+    email: yup.string().email("Invalid email").required("Email is required"),
     password: yup
       .string()
-      .min(8, "A senha deve ter pelo menos 8 caracteres")
-      .required("Senha é obrigatória"),
+      .min(8, "Password must be at least 8 characters")
+      .required("Password is required"),
   })
   .required();
 
@@ -45,7 +45,7 @@ export const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Estados para o Snackbar
+  // Snackbar state
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -61,12 +61,12 @@ export const Login = () => {
         navigate("/chat");
       }
     } catch (error: any) {
-      console.error("Erro ao fazer login:", error);
+      console.error("Login error:", error);
 
-      // Configura mensagem de erro para o Snackbar
+      // Set the error message for the Snackbar
       const message =
         error?.response?.data?.message ||
-        "Erro ao fazer login. Tente novamente.";
+        "Login failed. Please try again.";
       setErrorMessage(message);
       setOpenSnackbar(true);
     } finally {
@@ -74,7 +74,7 @@ export const Login = () => {
     }
   };
 
-  // Função para fechar o Snackbar
+  // Function to close the Snackbar
   const handleCloseSnackbar = (
     _event?: React.SyntheticEvent | Event,
     reason?: string
@@ -93,7 +93,7 @@ export const Login = () => {
       }}
     >
       <Grid container sx={{ height: "100%" }}>
-        {/* Coluna Esquerda */}
+        {/* Left column */}
 
         {!isMdDown && (
           <Grid
@@ -131,13 +131,13 @@ export const Login = () => {
                 Check Docs
               </Typography>
               <Typography variant="subtitle1" mt={1}>
-                Acesse sua conta e aproveite o poder da IA na documentação.
+                Sign in to your account and harness the power of AI for your documents.
               </Typography>
             </Box>
           </Grid>
         )}
 
-        {/* Coluna Direita */}
+        {/* Right column */}
         <Grid
           size={{ xs: 12, md: 8 }}
           sx={{
@@ -164,7 +164,7 @@ export const Login = () => {
             }}
           >
             <Typography variant="h5" align="center" gutterBottom>
-              Entre na sua conta
+              Sign in to your account
             </Typography>
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -180,7 +180,7 @@ export const Login = () => {
 
               <TextField
                 fullWidth
-                label="Senha"
+                label="Password"
                 type={showPassword ? "text" : "password"}
                 {...register("password")}
                 margin="normal"
@@ -208,15 +208,15 @@ export const Login = () => {
                 sx={{ mt: 3, pt: 1.5 }}
                 disabled={isLoading}
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
 
             <Box>
               <Typography>
-                Não tem uma conta?{" "}
+                Don't have an account?{" "}
                 <Link href="/register" underline="hover">
-                  Clique aqui
+                  Click here
                 </Link>
               </Typography>
             </Box>
@@ -224,7 +224,7 @@ export const Login = () => {
         </Grid>
       </Grid>
 
-      {/* Snackbar para erros */}
+      {/* Error snackbar */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}

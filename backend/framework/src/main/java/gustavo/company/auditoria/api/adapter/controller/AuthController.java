@@ -3,7 +3,10 @@ package gustavo.company.auditoria.api.adapter.controller;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +18,7 @@ import gustavo.company.auditoria.api.adapter.dto.request.auth.LoginRequestDTO;
 import gustavo.company.auditoria.api.adapter.dto.request.auth.RegisterRequestDTO;
 import gustavo.company.service.AuthService;
 import gustavo.company.utils.JWTUtils;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,14 @@ public class AuthController {
     private final AuthService authService;
     private final JWTUtils jwtUtils;
 
+    // Cookie flags are env-driven so the same build works locally (Lax/insecure)
+    // and cross-origin over HTTPS in production (None/secure).
+    @Value("${app.cookie.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie.same-site:Lax}")
+    private String cookieSameSite;
+
     /**
      * Endpoint to log in a user.
      * Receives email and password, authenticates the user, and returns a JWT token
@@ -46,16 +55,15 @@ public class AuthController {
      * @return HTTP response with success message.
      */
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody @Valid LoginRequestDTO loginRequestImpl,
-            HttpServletResponse response) {
+    public ResponseEntity<String> login(@RequestBody @Valid LoginRequestDTO loginRequestImpl) {
         log.info("Login attempt for email: {}", loginRequestImpl.email());
 
         String token = authService.login(loginRequestImpl.email(), loginRequestImpl.password());
 
-        setTokenCookie(response, token);
-
         log.info("Login successful for email: {}", loginRequestImpl.email());
-        return ResponseEntity.status(HttpStatus.OK).body("User logged in successfully");
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, buildTokenCookie(token).toString())
+                .body("User logged in successfully");
     }
 
     /**
@@ -90,8 +98,7 @@ public class AuthController {
      * @return HTTP response with success message.
      */
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody @Valid RegisterRequestDTO registerRequestImpl,
-            HttpServletResponse response) {
+    public ResponseEntity<String> register(@RequestBody @Valid RegisterRequestDTO registerRequestImpl) {
         log.info("Registration attempt for email: {}", registerRequestImpl.email());
 
         String token = authService.register(
@@ -99,24 +106,26 @@ public class AuthController {
                 registerRequestImpl.email(),
                 registerRequestImpl.password());
 
-        setTokenCookie(response, token);
-
         log.info("Registration successful for email: {}", registerRequestImpl.email());
-        return ResponseEntity.status(HttpStatus.OK).body("User registered successfully");
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, buildTokenCookie(token).toString())
+                .body("User registered successfully");
     }
 
     /**
-     * Helper method to configure the HTTP cookie with the JWT token.
+     * Builds the JWT cookie. Uses Spring's ResponseCookie so we can set SameSite
+     * (the Servlet Cookie API cannot), required for cross-origin HTTPS deploys.
      *
-     * @param response HttpServletResponse to which the cookie will be added.
-     * @param token    JWT token to be stored in the cookie.
+     * @param token JWT token to be stored in the cookie.
+     * @return the configured ResponseCookie.
      */
-    private void setTokenCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie("token", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // In production, set to true for HTTPS
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60); // 1 hour
-        response.addCookie(cookie);
+    private ResponseCookie buildTokenCookie(String token) {
+        return ResponseCookie.from("token", token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(60 * 60) // 1 hour
+                .build();
     }
 }
