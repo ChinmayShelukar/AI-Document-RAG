@@ -20,6 +20,10 @@ __pycache__/
 venv/
 .venv/
 
+# Uploaded documents (runtime, ephemeral — index is in-memory)
+backend/rag-server/data/*
+!backend/rag-server/data/.gitkeep
+
 # IDE
 .idea/
 .vscode/

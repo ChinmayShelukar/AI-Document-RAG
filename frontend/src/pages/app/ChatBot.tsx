@@ -23,6 +23,7 @@ import { api } from "../../shared/services/api/config/axios.config";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useAppThemeContext } from "../../shared/context/ThemeContext";
+import { M_STRIPE } from "../../shared/themes/Dark";
 
 interface Message {
   id: number;
@@ -148,7 +149,11 @@ export const ChatBot = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await api.post("/documents/upload", formData);
+      // Content-Type undefined lets the browser set multipart/form-data with the
+      // boundary (the axios instance default of application/json would break it).
+      const response = await api.post("/documents/upload", formData, {
+        headers: { "Content-Type": undefined },
+      });
       pushBotMessage(
         `Document "${response.data.filename}" indexed (${response.data.chunks} section(s)). You can now ask questions about it.`
       );
@@ -181,39 +186,40 @@ export const ChatBot = () => {
           flexDirection: "column",
           justifyContent: "flex-start",
           p: 3,
-          boxShadow: "2px 0 8px rgba(0,0,0,0.05)",
+          borderRight: `1px solid ${theme.palette.divider}`,
           position: "relative",
         }}
       >
         {/* Logo + Title */}
-        <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
           <Box
             sx={{
               bgcolor: theme.palette.primary.main,
               width: 40,
               height: 40,
-              borderRadius: "8px",
+              borderRadius: 0,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              color: "#fff",
-              fontWeight: "bold",
-              fontSize: 20,
+              color: theme.palette.primary.contrastText,
+              fontWeight: 700,
+              fontSize: 18,
+              letterSpacing: "1px",
               userSelect: "none",
-              pt: 0.5,
             }}
           >
             AI
           </Box>
           <Typography
-            mt={1}
             variant="h6"
-            fontWeight="bold"
-            color="primary.main"
+            fontWeight={700}
+            color="text.primary"
           >
-            Check Docs
+            AI Document RAG
           </Typography>
         </Box>
+        {/* M tricolor stripe — the brand signature */}
+        <Box sx={{ height: 4, width: "100%", background: M_STRIPE, mb: 4 }} />
 
         <List
           sx={{
@@ -304,11 +310,11 @@ export const ChatBot = () => {
       >
         <Typography
           variant="h5"
-          color="primary.main"
+          color="text.primary"
           textAlign="center"
           gutterBottom
         >
-          Check Docs AI
+          AI Document RAG
         </Typography>
 
         <Box
@@ -350,11 +356,20 @@ export const ChatBot = () => {
                 key={msg.id}
                 sx={{
                   alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
-                  bgcolor: msg.sender === "user" ? "primary.main" : "#f0f0f0",
-                  boxShadow: 3,
-                  color: msg.sender === "user" ? "#fff" : "#000",
-                  p: 1.2,
-                  borderRadius: 2,
+                  bgcolor:
+                    msg.sender === "user"
+                      ? "secondary.main"
+                      : "background.paper",
+                  border:
+                    msg.sender === "user"
+                      ? "none"
+                      : `1px solid ${theme.palette.divider}`,
+                  color:
+                    msg.sender === "user"
+                      ? "secondary.contrastText"
+                      : "text.primary",
+                  p: 1.5,
+                  borderRadius: 0,
                   maxWidth: "75%",
                   whiteSpace: "pre-wrap",
                   animation: "fadeIn 0.4s ease-in",
@@ -375,10 +390,11 @@ export const ChatBot = () => {
               sx={{
                 alignSelf: "flex-start",
                 mt: 1,
-                bgcolor: "#f0f0f0",
-                color: "#000",
+                bgcolor: "background.paper",
+                border: `1px solid ${theme.palette.divider}`,
+                color: "text.primary",
                 p: 2,
-                borderRadius: 2,
+                borderRadius: 0,
                 mr: 1.5,
                 maxWidth: "100%",
                 display: "inline-flex",
@@ -393,7 +409,14 @@ export const ChatBot = () => {
           )}
         </Box>
 
-        <Paper sx={{ display: "flex", gap: 1, borderRadius: 3 }}>
+        <Paper
+          sx={{
+            display: "flex",
+            gap: 1,
+            borderRadius: 0,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -436,8 +459,7 @@ export const ChatBot = () => {
             sx={{
               px: 2,
               py: 1,
-              borderRadius: 3,
-              boxShadow: "0 0 5px rgba(0,0,0,0.1)",
+              borderRadius: 0,
               fontSize: 14,
             }}
           />

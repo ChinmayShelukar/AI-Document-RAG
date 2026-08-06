@@ -16,7 +16,10 @@ class QuestionRequest(BaseModel):
 @app.post("/agent/respond")
 async def ask_question(request: QuestionRequest):
     try:
-        response = await get_query_engine().aquery(request.message)
+        query_engine = get_query_engine()
+        if query_engine is None:
+            return {"answer": "Please upload a document first, then ask questions about it."}
+        response = await query_engine.aquery(request.message)
         return {"answer": str(response)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

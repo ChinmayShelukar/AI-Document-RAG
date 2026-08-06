@@ -476,6 +476,11 @@
     "@eslint/core" "^0.15.1"
     levn "^0.4.1"
 
+"@fontsource/inter@^5.3.0":
+  version "5.3.0"
+  resolved "https://registry.npmjs.org/@fontsource/inter/-/inter-5.3.0.tgz"
+  integrity sha512-RofMylZmjlJEfELXeNHFWBRcSs75rGU/6bV2S2jfnvv/3rPXPGe0LgUJTklcHZ9lM4OZmAVFhcJPnACfb91A3g==
+
 "@hookform/resolvers@^5.2.1":
   version "5.2.1"
   resolved "https://registry.npmjs.org/@hookform/resolvers/-/resolvers-5.2.1.tgz"
@@ -2177,11 +2182,6 @@ yaml@^1.10.0:
   version "1.10.2"
   resolved "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz"
   integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
-
-yaml@^2.4.2:
-  version "2.9.0"
-  resolved "https://registry.npmjs.org/yaml/-/yaml-2.9.0.tgz"
-  integrity sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==
 
 yocto-queue@^0.1.0:
   version "0.1.0"

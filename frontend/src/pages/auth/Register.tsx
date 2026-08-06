@@ -20,6 +20,7 @@ import * as yup from "yup";
 import { useState } from "react";
 import { api } from "../../shared/services/api/config/axios.config";
 import { useNavigate } from "react-router-dom";
+import { M_STRIPE } from "../../shared/themes/Dark";
 
 const schema = yup
   .object({
@@ -214,24 +215,24 @@ export const Register = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "primary.main",
-              color: "#fff",
+              bgcolor: "#000000",
+              color: "#ffffff",
               p: 4,
             }}
           >
             <Box textAlign="center">
               <Box
                 sx={{
-                  bgcolor: "#fff",
-                  color: "primary.main",
+                  bgcolor: "#ffffff",
+                  color: "#000000",
                   width: 55,
                   height: 55,
-                  borderRadius: "12px",
+                  borderRadius: 0,
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  fontWeight: "bold",
-                  fontSize: 30,
+                  fontWeight: 700,
+                  fontSize: 26,
                   userSelect: "none",
                   mx: "auto",
                   mb: 2,
@@ -239,10 +240,12 @@ export const Register = () => {
               >
                 AI
               </Box>
-              <Typography variant="h4" fontWeight="bold">
-                Check Docs
+              {/* M tricolor stripe — brand signature */}
+              <Box sx={{ height: 4, width: 120, background: M_STRIPE, mx: "auto", mb: 2 }} />
+              <Typography variant="h4" fontWeight={700}>
+                AI Document RAG
               </Typography>
-              <Typography variant="subtitle1" mt={1}>
+              <Typography variant="subtitle1" mt={1} sx={{ color: "#bbbbbb" }}>
                 Sign up and harness the power of AI for your documents.
               </Typography>
             </Box>

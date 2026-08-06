@@ -28,27 +28,28 @@ Settings.embed_model = HuggingFaceEmbedding(
 # Configure LLM (Groq hosted API — no GPU needed for inference)
 Settings.llm = Groq(model=groq_model, api_key=groq_api_key)
 
-# Build the index from the documents directory at startup
-documents = SimpleDirectoryReader(documents_dir).load_data()
-index = VectorStoreIndex.from_documents(documents)
+# The index holds ONLY the most recently uploaded ("active") document, so answers
+# come strictly from that file. Uploading a new document replaces the index.
+# ponytail: single active doc, not per-user or multi-doc history. Upgrade path if
+# needed: one index per user/doc keyed in a dict instead of a single global.
+index = None
+active_filename = None
 
 
 def get_query_engine():
-    """Return a query engine over the current index.
-
-    Built per call so documents added at runtime via ingest_file() are visible.
-    """
-    return index.as_query_engine()
+    """Return a query engine over the active document, or None if none uploaded."""
+    if index is None:
+        return None
+    return index.as_query_engine(similarity_top_k=5)
 
 
 def ingest_file(file_path: str) -> int:
-    """Load a single uploaded file and insert its documents into the live index.
+    """Replace the index with just the uploaded file and make it the active doc.
 
-    Returns the number of document chunks inserted. The file already lives under
-    DOCUMENTS_DIR, so it is also re-read on the next startup (the index itself is
-    in-memory and not persisted).
+    Returns the number of document chunks indexed. The index is in-memory only.
     """
+    global index, active_filename
     docs = SimpleDirectoryReader(input_files=[file_path]).load_data()
-    for doc in docs:
-        index.insert(doc)
+    index = VectorStoreIndex.from_documents(docs)
+    active_filename = os.path.basename(file_path)
     return len(docs)
