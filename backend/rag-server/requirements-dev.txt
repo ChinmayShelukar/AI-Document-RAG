@@ -1,0 +1,5 @@
+# Dev/test-only dependencies (NOT installed in the Docker image — keeps it lean).
+#   pip install -r requirements-dev.txt
+#   python -m pytest
+pytest
+httpx
