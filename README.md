@@ -1,128 +1,49 @@
-# 📄 Check Docs AI
+# 📄 AI Document RAG
 
-Check Docs AI é uma plataforma inteligente e moderna para análise e verificação de documentos, utilizando IA generativa com RAG (Retrieval-Augmented Generation) para garantir respostas contextuais, precisas e confiáveis.
-O sistema combina automação, processamento de linguagem natural e arquitetura modular, oferecendo uma solução escalável para empresas, escritórios jurídicos, instituições acadêmicas e órgãos corporativos que necessitam validar informações rapidamente.
+A document Q&A application built on Retrieval-Augmented Generation (RAG). Upload a
+document, then ask questions about it in natural language and get answers grounded
+in that document's contents.
 
-O projeto nasce da necessidade de um fluxo de verificação seguro, customizável e integrável, eliminando a dependência de soluções fechadas. A combinação de Java + Spring Boot para a API principal, Python + FastAPI + LangChain para o servidor RAG e React + MUI para a interface garante alta performance, flexibilidade e usabilidade.
+Reworked from an open-source clone into a portfolio project: the stack was moved
+off local models onto fully hosted APIs so it runs on free-tier infrastructure.
 
-Ideal para ambientes onde a precisão na análise documental é crítica, o Check Docs AI se torna a base perfeita para construir sistemas de validação documental robustos e de nível empresarial.
+## Architecture
 
----
-
-## 🌟 Principais Funcionalidades
-
-- 📑 **Análise inteligente de documentos** usando IA e RAG
-- 🔍 **Busca contextual** para localizar informações específicas
-- 🛡️ **Segurança e controle de acesso** para dados sensíveis
-- ⚙️ **Arquitetura modularizada** facilitando manutenção e evolução
-- 🚀 **Integração com modelos locais via Ollama**
-- 💻 **Interface moderna e responsiva** com Material UI
-- 📊 **Resultados claros e exportáveis**
-- 🧠 **Uso de LangChain para orquestração de consultas inteligentes**
-
----
-
-## 📌 Motivação do Projeto
-
-A verificação manual de documentos é um processo **lento, sujeito a erros e caro**. O **Check Docs AI** foi criado para:
-
-- ⚡ **Reduzir tempo de análise** com automação inteligente
-- 📡 **Fornecer respostas contextuais e explicáveis**
-- 🔧 **Permitir customização** para diferentes áreas de atuação
-- 🛡️ **Garantir segurança** no tratamento de dados sigilosos
-- 📱 **Disponibilizar acesso multiplataforma** com interface moderna
-
----
-
-## 🎯 Casos de Uso
-
-- 🏛️ **Escritórios jurídicos** para análise de contratos e peças processuais
-- 📚 **Instituições acadêmicas** para verificação de trabalhos e referências
-- 🏢 **Empresas** para validação de documentos internos e compliance
-- 📑 **Auditorias** para conferência rápida de relatórios e registros
-
----
-
-## 🚀 Tecnologias Utilizadas
-
-### 🔧 Back-End (API)
-
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=java,spring,postgresql,docker" />
-</p>
-
-- **Java** • Linguagem robusta e escalável
-- **Spring Boot** • API REST performática e extensível
-- **PostgreSQL** • Banco de dados relacional seguro e confiável
-- **Docker** • Padronização de ambiente e fácil deploy
-
----
-
-### 🧠 Servidor RAG
-
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=python,fastapi,docker" />
-</p>
-
-- **Python** • Flexibilidade para IA e processamento de dados
-- **FastAPI** • Desempenho alto com APIs modernas
-- **LangChain** • Orquestração de pipelines de IA
-- **Ollama** • Execução de modelos de linguagem localmente
-
----
-
-### 💻 Front-End
-
-<p align="left">
-  <img src="https://skillicons.dev/icons?i=react,typescript,materialui" />
-</p>
-
-- **React.js** • Interface reativa e de alta performance
-- **TypeScript** • Tipagem estática para maior segurança no código
-- **Material UI** • Componentes responsivos e de design limpo
-
----
-
-## 🛠️ Como Começar
-
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/gustavoventieri/CheckDocsAI.git
-cd CheckDocsAI
-```
-
-### 2. Suba os containers com Docker
-
-```bash
-docker-compose up --build
-```
-
-> Isso iniciará a API Java + Spring, o servidor RAG em Python e o front-end React, junto ao banco PostgreSQL.
-
-### 3. Baixe o modelo do agente
-
-```bash
-docker exec -it ollama ollama pull modelName
-```
-
-> Isso baixará o modelo do agente do site do ollama
-
-### 4. Acesse o projeto
-
-- Front-end: `http://localhost:5173`
-- API (Swagger): `http://localhost:8080/swagger/api-docs`
-
----
-
-## 📄 Documentação da API
-
-**API Java + Spring** (Swagger):
+Three services, one request flow:
 
 ```
-http://localhost:8080/swagger/api-docs
+React (5173)  →  Spring API (8080, /api/v1)  →  RAG server (5000)  →  Groq / Gemini
 ```
 
----
+- **Frontend** — React 19 + TypeScript + Vite + MUI.
+- **Spring API** — Spring Boot 3.5 / Java 21, multi-module Maven (hexagonal:
+  `domain` + `framework`). REST + JWT auth via an HttpOnly cookie. Proxies to the
+  RAG server; never talks to the LLM directly.
+- **RAG server** — Python FastAPI + LlamaIndex. **Groq** for the LLM, **Google
+  Gemini** for embeddings — both hosted APIs, no local torch/GPU.
 
-> 💡 Com o **Check Docs AI**, a análise documental se torna mais rápida, segura e inteligente, economizando tempo e reduzindo erros.
+The RAG index holds only the most recently uploaded document (rebuilt on each
+upload), so answers never bleed across documents. In-memory; resets on restart.
+
+## Tech stack
+
+| Layer | Tech |
+|-------|------|
+| Frontend | React, TypeScript, Vite, Material UI |
+| API | Java 21, Spring Boot, Spring Security, PostgreSQL |
+| RAG | Python, FastAPI, LlamaIndex, Groq (LLM), Gemini (embeddings) |
+| Infra | Docker, Neon (Postgres), Render, Vercel |
+
+## Running locally
+
+Each service runs independently. See `CLAUDE.md` for exact commands and the H2
+override that lets the API run without a local Postgres.
+
+- **RAG server**: `cd backend/rag-server && uvicorn app:app --host 0.0.0.0 --port 5000`
+  (reads `config/.env` — see `backend/rag-server/README.md` for required keys)
+- **Spring API**: `cd backend && mvn clean package -DskipTests` then run the
+  `framework` jar (env-var driven config, see `CLAUDE.md`)
+- **Frontend**: `cd frontend && npm run dev` (needs `frontend/.env` →
+  `VITE_API_URL=http://localhost:8080/api/v1`)
+
+API docs (Swagger): `http://localhost:8080/swagger-ui.html`

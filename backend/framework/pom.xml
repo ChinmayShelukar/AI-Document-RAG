@@ -8,7 +8,7 @@
 		<version>3.5.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>gupy.company</groupId>
+	<groupId>com.aidocrag</groupId>
 	<artifactId>framework</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>framework</name>
@@ -70,7 +70,7 @@
 			<scope>test</scope>
 		</dependency>
 		 <dependency>
-            <groupId>gupy.company</groupId>
+            <groupId>com.aidocrag</groupId>
             <artifactId>domain</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>

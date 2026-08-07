@@ -5,7 +5,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>gupy.company</groupId>
+    <groupId>com.aidocrag</groupId>
     <artifactId>auditoria.api</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>

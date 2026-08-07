@@ -34,3 +34,6 @@ backend/rag-server/data/*
 
 # Local session handoff notes (never commit)
 HANDOFF.md
+
+# graphify generated knowledge graph (regenerable)
+graphify-out/
