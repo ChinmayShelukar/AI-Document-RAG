@@ -3,8 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.llms.groq import Groq
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-import torch
+from llama_index.embeddings.gemini import GeminiEmbedding
 
 # Path to .env
 env_path = Path('.') / 'config' / '.env'
@@ -14,15 +13,14 @@ load_dotenv(dotenv_path=env_path)
 embedding_model = os.getenv("EMBEDDING_MODEL")
 groq_model = os.getenv("GROQ_MODEL")
 groq_api_key = os.getenv("GROQ_API_KEY")
+google_api_key = os.getenv("GOOGLE_API_KEY")
 documents_dir = os.getenv("DOCUMENTS_DIR")
 
-# Detect whether a GPU is available (used by the local embedding model)
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Configure embeddings (local HuggingFace model — Groq has no embeddings endpoint)
-Settings.embed_model = HuggingFaceEmbedding(
+# Configure embeddings (Google Gemini hosted API — no local model / GPU / torch,
+# so the server fits in a free 512MB host instead of needing ~1GB for HuggingFace).
+Settings.embed_model = GeminiEmbedding(
     model_name=embedding_model,
-    device=device
+    api_key=google_api_key,
 )
 
 # Configure LLM (Groq hosted API — no GPU needed for inference)

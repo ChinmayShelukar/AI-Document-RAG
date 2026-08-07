@@ -1,29 +1,26 @@
----
-title: AI Document RAG Server
-emoji: 📄
-colorFrom: blue
-colorTo: red
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # AI Document RAG — Server
 
-FastAPI + LlamaIndex RAG server for the **AI Document RAG** project. Local
-HuggingFace embeddings + Groq-hosted LLM. Scopes answers to the most recently
-uploaded document.
+FastAPI + LlamaIndex RAG server for the **AI Document RAG** project. Fully
+API-based (no local ML): **Gemini** for embeddings, **Groq** for the LLM — so it
+runs on a small free instance. Scopes answers to the most recently uploaded
+document.
 
 ## Endpoints
 - `POST /agent/respond` — `{ "message": "..." }` → `{ "answer": "..." }`
 - `POST /documents/ingest` — multipart `file` → `{ "filename", "chunks" }`
 
-## Required Space secrets/variables
+## Required environment variables
 | Key | Example |
 |-----|---------|
-| `GROQ_API_KEY` | `gsk_...` (from console.groq.com) |
+| `GROQ_API_KEY` | `gsk_...` (console.groq.com) |
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` |
+| `GOOGLE_API_KEY` | `AIza...` (aistudio.google.com/apikey) |
+| `EMBEDDING_MODEL` | `models/gemini-embedding-001` |
 | `DOCUMENTS_DIR` | `data` |
 
-Runs on port 7860 (HF Spaces Docker default).
+## Run locally
+```
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 5000
+```
+Reads config from `config/.env` locally; on a host, set the vars above directly.

@@ -31,3 +31,6 @@ backend/rag-server/data/*
 
 # OS
 .DS_Store
+
+# Local session handoff notes (never commit)
+HANDOFF.md
