@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aidocrag.auditoria.api.adapter.mapper.UserMapper;
 import com.aidocrag.auditoria.api.entity.User;
 import com.aidocrag.entity.UserDomain;
+import com.aidocrag.exception.Conflict;
 import com.aidocrag.exception.InternalServerError;
 import com.aidocrag.exception.NotFound;
 import com.aidocrag.exception.Unauthorized;
@@ -64,6 +65,13 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public String register(final String name, final String email, final String password) {
         log.info("Starting registration for email: {}", email);
+
+        // Guard here (not at the DB) so a duplicate email returns a clean 409
+        // instead of leaking the unique-constraint violation as a 500.
+        if (userRepository.findByEmail(email).isPresent()) {
+            log.warn("Registration blocked: email already exists: {}", email);
+            throw new Conflict("An account with this email already exists.");
+        }
 
         final User user = new User(
                 null,

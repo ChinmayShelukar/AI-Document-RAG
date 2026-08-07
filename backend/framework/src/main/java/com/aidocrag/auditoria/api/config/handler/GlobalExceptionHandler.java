@@ -193,8 +193,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleAll(Exception ex) {
+        // Do NOT echo ex.getMessage() — it leaks internals (SQL, constraint
+        // names, stack detail) to the client. Log server-side, return generic.
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(buildBody(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error: " + ex.getMessage()));
+                .body(buildBody(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again."));
     }
 }
