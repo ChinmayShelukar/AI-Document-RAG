@@ -10,60 +10,123 @@ import {
   ListItemText,
   ListItem,
   List,
+  Drawer,
+  Slider,
+  Select,
+  MenuItem,
+  Divider,
+  Collapse,
+  Chip,
 } from "@mui/material";
 import {
   Logout,
   LightModeOutlined,
   DarkModeOutlined,
   Send,
-  AttachFile,
+  SettingsOutlined,
+  Close,
+  UploadFileOutlined,
+  ExpandMore,
+  ExpandLess,
 } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../../shared/services/api/config/axios.config";
+import { useDropzone } from "react-dropzone";
+import ReactMarkdown from "react-markdown";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useAppThemeContext } from "../../shared/context/ThemeContext";
 import { M_STRIPE } from "../../shared/themes/Dark";
+import {
+  chatService,
+  type Source,
+  type TokenUsage,
+} from "../../shared/services/api/chat/chatService";
 
 interface Message {
-  id: number;
+  id: string;
   message: string;
   sender: "user" | "bot";
+  sources?: Source[];
 }
 
-const TypingDots = () => {
+// Groq models the dropdown offers — must stay in sync with agent.py ALLOWED_MODELS.
+const MODELS = [
+  { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)" },
+  { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Groq)" },
+];
+
+const ACCEPTED = {
+  "application/pdf": [".pdf"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+  "text/plain": [".txt"],
+  "text/markdown": [".md"],
+  "text/csv": [".csv"],
+};
+const FILE_CHIPS = ["PDF", "DOCX", "TXT", "MD", "CSV"];
+
+const TypingDots = () => (
+  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+    {[0, 1, 2].map((i) => (
+      <Box
+        key={i}
+        sx={{
+          width: 6,
+          height: 6,
+          bgcolor: "text.secondary",
+          borderRadius: "50%",
+          animation: "typing 1.5s infinite",
+          animationDelay: `${i * 0.2}s`,
+          "@keyframes typing": {
+            "0%, 80%, 100%": { transform: "scale(0.8)", opacity: 0.5 },
+            "40%": { transform: "scale(1.4)", opacity: 1 },
+          },
+        }}
+      />
+    ))}
+  </Box>
+);
+
+const Sources = ({ sources }: { sources: Source[] }) => {
+  const [open, setOpen] = useState(false);
+  const theme = useTheme();
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        ml: 0,
-      }}
-    >
-      {[0, 1, 2].map((i) => (
-        <Box
-          key={i}
-          sx={{
-            width: 6,
-            height: 6,
-            bgcolor: "text.secondary",
-            borderRadius: "50%",
-            animation: "typing 1.5s infinite",
-            animationDelay: `${i * 0.2}s`,
-            "@keyframes typing": {
-              "0%, 80%, 100%": {
-                transform: "scale(0.8)",
-                opacity: 0.5,
-              },
-              "40%": {
-                transform: "scale(1.4)",
-                opacity: 1,
-              },
-            },
-          }}
-        />
-      ))}
+    <Box sx={{ mt: 1 }}>
+      <Button
+        size="small"
+        onClick={() => setOpen((o) => !o)}
+        endIcon={open ? <ExpandLess /> : <ExpandMore />}
+        sx={{ p: 0, minHeight: 0, color: "text.secondary", fontSize: 12 }}
+      >
+        {sources.length} source{sources.length > 1 ? "s" : ""}
+      </Button>
+      <Collapse in={open}>
+        <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+          {sources.map((s, i) => (
+            <Box
+              key={i}
+              sx={{
+                p: 1,
+                border: `1px solid ${theme.palette.divider}`,
+                fontSize: 12,
+              }}
+            >
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  {s.file}
+                </Typography>
+                <Chip
+                  label={s.score.toFixed(3)}
+                  size="small"
+                  sx={{ borderRadius: 0, height: 18, fontSize: 10 }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {s.text}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Collapse>
     </Box>
   );
 };
@@ -71,97 +134,77 @@ const TypingDots = () => {
 export const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [idCounter, setIdCounter] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [hasDoc, setHasDoc] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Tuning (sent to the backend)
+  const [model, setModel] = useState(MODELS[0].value);
+  const [topK, setTopK] = useState(5);
+  const [chunkSize, setChunkSize] = useState(500);
+  const [chunkOverlap, setChunkOverlap] = useState(50);
+  const [confidence, setConfidence] = useState(0.35);
+  const [tokens, setTokens] = useState<TokenUsage>({ prompt: 0, completion: 0, embedding: 0 });
+
   const theme = useTheme();
   const navigate = useNavigate();
   const { toggleTheme } = useAppThemeContext();
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const pushBot = (message: string, sources?: Source[]) =>
+    setMessages((prev) => [...prev, { id: crypto.randomUUID(), message, sender: "bot", sources }]);
 
-    const userMessage: Message = {
-      id: idCounter,
-      message: input,
-      sender: "user",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setIdCounter((prev) => prev + 1);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const response = await api.post("/chat-bot/ask/agent", {
-        message: userMessage.message,
-      });
-
-      const botMessage: Message = {
-        id: idCounter + 1,
-        message: response.data.answer || "Sorry, I didn't understand.",
-        sender: "bot",
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-      setIdCounter((prev) => prev + 1);
-      setLoading(false);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: idCounter + 1,
-          message: "Error sending message, please try again later.",
-          sender: "bot",
-        },
-      ]);
-      setIdCounter((prev) => prev + 1);
-      setLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const pushBotMessage = (message: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: idCounter + 1, message, sender: "bot" },
-    ]);
-    setIdCounter((prev) => prev + 1);
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const doUpload = async (file: File) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      // Content-Type undefined lets the browser set multipart/form-data with the
-      // boundary (the axios instance default of application/json would break it).
-      const response = await api.post("/documents/upload", formData, {
-        headers: { "Content-Type": undefined },
-      });
-      pushBotMessage(
-        `Document "${response.data.filename}" indexed (${response.data.chunks} section(s)). You can now ask questions about it.`
+      const res = await chatService.upload(file, chunkSize, chunkOverlap);
+      setHasDoc(true);
+      pushBot(
+        `Document **${res.filename}** indexed (${res.chunks} chunk${res.chunks > 1 ? "s" : ""}). Ask me anything about it.`
       );
-    } catch (error) {
-      pushBotMessage("Failed to upload the document, please try again.");
+    } catch {
+      pushBot("Failed to upload the document. Check the file type and size (max 10MB).");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
+    accept: ACCEPTED,
+    maxFiles: 1,
+    noClick: hasDoc, // only the hero dropzone is click-to-open
+    onDrop: (files) => files[0] && doUpload(files[0]),
+  });
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const text = input;
+    setMessages((prev) => [...prev, { id: crypto.randomUUID(), message: text, sender: "user" }]);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await chatService.ask({
+        message: text,
+        topK,
+        model,
+        confidenceThreshold: confidence,
+      });
+      pushBot(res.answer || "Sorry, I didn't understand.", res.sources);
+      if (res.tokens)
+        setTokens((t) => ({
+          prompt: t.prompt + res.tokens.prompt,
+          completion: t.completion + res.tokens.completion,
+          embedding: t.embedding + res.tokens.embedding,
+        }));
+    } catch {
+      pushBot("Error sending message, please try again later.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -171,37 +214,29 @@ export const ChatBot = () => {
   };
 
   return (
-    <Box
-      sx={{
-        height: "100vh",
-        display: "flex",
-        backgroundColor: theme.palette.background.default,
-      }}
-    >
+    <Box sx={{ height: "100vh", display: "flex", bgcolor: "background.default" }}>
+      {/* Sidebar — BMW M identity preserved */}
       <Paper
         sx={{
           width: 300,
           bgcolor: "background.paper",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-start",
           p: 3,
           borderRight: `1px solid ${theme.palette.divider}`,
           position: "relative",
         }}
       >
-        {/* Logo + Title */}
         <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
           <Box
             sx={{
-              bgcolor: theme.palette.primary.main,
+              bgcolor: "primary.main",
               width: 40,
               height: 40,
-              borderRadius: 0,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              color: theme.palette.primary.contrastText,
+              color: "primary.contrastText",
               fontWeight: 700,
               fontSize: 18,
               letterSpacing: "1px",
@@ -210,261 +245,312 @@ export const ChatBot = () => {
           >
             AI
           </Box>
-          <Typography
-            variant="h6"
-            fontWeight={700}
-            color="text.primary"
-          >
+          <Typography variant="h6" fontWeight={700} color="text.primary">
             AI Document RAG
           </Typography>
         </Box>
-        {/* M tricolor stripe — the brand signature */}
         <Box sx={{ height: 4, width: "100%", background: M_STRIPE, mb: 4 }} />
 
-        <List
-          sx={{
-            position: "absolute",
-            bottom: 4,
-            left: 0,
-            width: "100%",
-            px: 0,
-          }}
-        >
+        <List sx={{ position: "absolute", bottom: 4, left: 0, width: "100%", px: 0 }}>
+          <ListItem
+            component={Button}
+            onClick={() => setSettingsOpen(true)}
+            sx={{ color: "text.primary", textTransform: "none", px: 2, py: 1 }}
+          >
+            <ListItemIcon sx={{ color: "text.primary", minWidth: 36 }}>
+              <SettingsOutlined />
+            </ListItemIcon>
+            <ListItemText primary="Settings" />
+          </ListItem>
           <ListItem
             component={Button}
             onClick={toggleTheme}
             sx={{
               color: theme.palette.info.main,
-              fontWeight: 600,
               textTransform: "none",
               "&:hover": {
                 bgcolor: theme.palette.info.main,
                 color: "#fff",
-                boxShadow: `0 0 10px ${theme.palette.info.main}`,
-                "& .MuiListItemIcon-root": {
-                  color: "#fff", // force the icon to turn white on hover
-                },
+                "& .MuiListItemIcon-root": { color: "#fff" },
               },
               px: 2,
               py: 1,
             }}
           >
-            <ListItemIcon
-              sx={{
-                color: theme.palette.info.main,
-                minWidth: 36,
-                mb: 0.8,
-              }}
-            >
-              {theme.palette.mode === "dark" ? (
-                <LightModeOutlined />
-              ) : (
-                <DarkModeOutlined />
-              )}
+            <ListItemIcon sx={{ color: theme.palette.info.main, minWidth: 36 }}>
+              {theme.palette.mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
             </ListItemIcon>
             <ListItemText primary="Switch Theme" />
           </ListItem>
-
           <ListItem
             component={Button}
             onClick={handleLogout}
             sx={{
               color: theme.palette.error.main,
-              fontWeight: 600,
               textTransform: "none",
               "&:hover": {
                 bgcolor: theme.palette.error.main,
                 color: "#fff",
-                boxShadow: `0 0 10px ${theme.palette.error.main}`,
-                "& .MuiListItemIcon-root": {
-                  color: "#fff", // force the icon to turn white on hover
-                },
+                "& .MuiListItemIcon-root": { color: "#fff" },
               },
               px: 2,
               py: 1,
             }}
           >
-            <ListItemIcon
-              sx={{
-                color: theme.palette.error.main,
-                minWidth: 36,
-                mb: 0.6,
-              }}
-            >
+            <ListItemIcon sx={{ color: theme.palette.error.main, minWidth: 36 }}>
               <Logout />
             </ListItemIcon>
             <ListItemText primary="Log out" />
           </ListItem>
         </List>
       </Paper>
-      {/* Main Chat Area */}
-      <Box
-        sx={{
-          flex: 1,
-          maxWidth: 600,
-          mx: "auto",
-          display: "flex",
-          flexDirection: "column",
-          p: 2,
-        }}
-      >
-        <Typography
-          variant="h5"
-          color="text.primary"
-          textAlign="center"
-          gutterBottom
-        >
-          AI Document RAG
-        </Typography>
 
-        <Box
-          sx={{
-            flex: 1,
-            p: 2,
-            mb: 2,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-            scrollbarWidth: "thin", // Firefox
-            "&::-webkit-scrollbar": {
-              width: 6,
-            },
-            "&::-webkit-scrollbar-thumb": {
-              backgroundColor: theme.palette.divider,
-              borderRadius: 3,
-            },
-            "&::-webkit-scrollbar-track": {
-              backgroundColor: "transparent",
-            },
-          }}
-        >
-          {messages.length === 0 ? (
+      {/* Main area */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {messages.length === 0 ? (
+          /* Hero empty-state with drag-drop dropzone */
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              p: 4,
+            }}
+          >
+            <Typography variant="h4" color="text.primary" textAlign="center" gutterBottom>
+              Talk to your documents
+            </Typography>
+            <Typography variant="body1" color="text.secondary" textAlign="center" mb={4}>
+              Upload a document and ask questions. Powered by RAG with source citations.
+            </Typography>
             <Box
-              display="flex"
-              height="100%"
-              justifyContent="center"
-              alignItems="center"
-            >
-              <Typography variant="body2" color="text.secondary" mt={4}>
-                Send a question to get started.
-              </Typography>
-            </Box>
-          ) : (
-            messages.map((msg) => (
-              <Box
-                key={msg.id}
-                sx={{
-                  alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
-                  bgcolor:
-                    msg.sender === "user"
-                      ? "secondary.main"
-                      : "background.paper",
-                  border:
-                    msg.sender === "user"
-                      ? "none"
-                      : `1px solid ${theme.palette.divider}`,
-                  color:
-                    msg.sender === "user"
-                      ? "secondary.contrastText"
-                      : "text.primary",
-                  p: 1.5,
-                  borderRadius: 0,
-                  maxWidth: "75%",
-                  whiteSpace: "pre-wrap",
-                  animation: "fadeIn 0.4s ease-in",
-                  "@keyframes fadeIn": {
-                    from: { opacity: 0, transform: "translateY(5px)" },
-                    to: { opacity: 1, transform: "translateY(0)" },
-                  },
-                }}
-              >
-                {msg.message}
-                <div ref={bottomRef} />
-              </Box>
-            ))
-          )}
-
-          {loading && (
-            <Box
+              {...getRootProps()}
               sx={{
-                alignSelf: "flex-start",
-                mt: 1,
-                bgcolor: "background.paper",
-                border: `1px solid ${theme.palette.divider}`,
-                color: "text.primary",
-                p: 2,
-                borderRadius: 0,
-                mr: 1.5,
-                maxWidth: "100%",
-                display: "inline-flex",
+                width: "100%",
+                maxWidth: 560,
+                minHeight: 320,
+                border: `1px dashed ${isDragActive ? theme.palette.secondary.main : theme.palette.divider}`,
+                bgcolor: isDragActive ? "action.hover" : "transparent",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
                 alignItems: "center",
-                animation: "fadeIn 0.4s ease-in",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
+                cursor: "pointer",
+                p: 4,
+                transition: "border-color 0.2s",
               }}
             >
-              <TypingDots />
+              <input {...getInputProps()} />
+              <UploadFileOutlined sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
+              <Typography variant="h6" color="text.primary">
+                {uploading ? "Indexing…" : "Drop your document here"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                or click to browse
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                {FILE_CHIPS.map((c) => (
+                  <Chip key={c} label={c} size="small" sx={{ borderRadius: 0 }} />
+                ))}
+              </Box>
+              <Typography variant="caption" color="text.secondary" mt={2}>
+                Max file size: 10MB
+              </Typography>
             </Box>
-          )}
-        </Box>
-
-        <Paper
-          sx={{
-            display: "flex",
-            gap: 1,
-            borderRadius: 0,
-            border: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            hidden
-            accept=".txt,.pdf,.docx,.md"
-            onChange={handleUpload}
-          />
-          <TextField
-            fullWidth
-            placeholder="Type your message..."
-            value={input}
-            multiline
-            minRows={1}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            disabled={loading}
-            variant="standard"
-            InputProps={{
-              disableUnderline: true,
-              startAdornment: (
-                <IconButton
-                  color="primary"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading || loading}
-                  title="Upload a document"
-                >
-                  <AttachFile />
-                </IconButton>
-              ),
-              endAdornment: (
-                <IconButton
-                  color="primary"
-                  onClick={handleSend}
-                  disabled={loading || !input.trim()}
-                >
-                  <Send />
-                </IconButton>
-              ),
-            }}
+          </Box>
+        ) : (
+          /* Chat view */
+          <Box
             sx={{
-              px: 2,
-              py: 1,
-              borderRadius: 0,
-              fontSize: 14,
+              flex: 1,
+              maxWidth: 720,
+              width: "100%",
+              mx: "auto",
+              display: "flex",
+              flexDirection: "column",
+              p: 2,
+              overflow: "hidden",
             }}
-          />
-        </Paper>
+          >
+            <Box
+              sx={{
+                flex: 1,
+                p: 2,
+                mb: 2,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                scrollbarWidth: "thin",
+                "&::-webkit-scrollbar": { width: 6 },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: theme.palette.divider,
+                },
+              }}
+            >
+              {messages.map((msg) => (
+                <Box
+                  key={msg.id}
+                  sx={{
+                    alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
+                    bgcolor: msg.sender === "user" ? "secondary.main" : "background.paper",
+                    border: msg.sender === "user" ? "none" : `1px solid ${theme.palette.divider}`,
+                    color: msg.sender === "user" ? "secondary.contrastText" : "text.primary",
+                    px: 1.5,
+                    py: 0.5,
+                    maxWidth: "80%",
+                    animation: "fadeIn 0.4s ease-in",
+                    "@keyframes fadeIn": {
+                      from: { opacity: 0, transform: "translateY(5px)" },
+                      to: { opacity: 1, transform: "translateY(0)" },
+                    },
+                    "& p": { my: 0.5 },
+                    "& pre": { whiteSpace: "pre-wrap", overflowX: "auto" },
+                    "& code": { fontSize: 13 },
+                  }}
+                >
+                  <ReactMarkdown>{msg.message}</ReactMarkdown>
+                  {msg.sources && msg.sources.length > 0 && <Sources sources={msg.sources} />}
+                </Box>
+              ))}
+              {loading && (
+                <Box
+                  sx={{
+                    alignSelf: "flex-start",
+                    mt: 1,
+                    bgcolor: "background.paper",
+                    border: `1px solid ${theme.palette.divider}`,
+                    p: 2,
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <TypingDots />
+                </Box>
+              )}
+              <div ref={bottomRef} />
+            </Box>
+
+            <Paper
+              sx={{
+                display: "flex",
+                gap: 1,
+                border: `1px solid ${theme.palette.divider}`,
+              }}
+            >
+              <TextField
+                fullWidth
+                placeholder="Ask about your document…"
+                value={input}
+                multiline
+                minRows={1}
+                maxRows={5}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={loading}
+                variant="standard"
+                InputProps={{
+                  disableUnderline: true,
+                  startAdornment: (
+                    <IconButton
+                      color="primary"
+                      onClick={openFileDialog}
+                      disabled={uploading || loading}
+                      title="Upload another document"
+                    >
+                      <UploadFileOutlined />
+                    </IconButton>
+                  ),
+                  endAdornment: (
+                    <IconButton color="primary" onClick={handleSend} disabled={loading || !input.trim()}>
+                      <Send />
+                    </IconButton>
+                  ),
+                }}
+                sx={{ px: 2, py: 1, fontSize: 14 }}
+              />
+              {/* hidden dropzone input so drag-drop still works in chat view */}
+              <input {...getInputProps()} />
+            </Paper>
+          </Box>
+        )}
       </Box>
+
+      {/* Settings drawer */}
+      <Drawer anchor="right" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+        <Box sx={{ width: 340, p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+            <Typography variant="h6">Settings</Typography>
+            <IconButton onClick={() => setSettingsOpen(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+
+          <Typography variant="body2" gutterBottom>
+            LLM Model
+          </Typography>
+          <Select
+            fullWidth
+            size="small"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            sx={{ mb: 3, borderRadius: 0 }}
+          >
+            {MODELS.map((m) => (
+              <MenuItem key={m.value} value={m.value}>
+                {m.label}
+              </MenuItem>
+            ))}
+          </Select>
+
+          <Typography variant="body2">Top-K retrieval: {topK}</Typography>
+          <Slider value={topK} min={1} max={10} step={1} onChange={(_, v) => setTopK(v as number)} sx={{ mb: 2 }} />
+
+          <Typography variant="body2">Confidence threshold: {confidence.toFixed(2)}</Typography>
+          <Slider
+            value={confidence}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={(_, v) => setConfidence(v as number)}
+            sx={{ mb: 3 }}
+          />
+
+          <Divider sx={{ mb: 2 }} />
+          <Typography variant="body2">Chunk size: {chunkSize}</Typography>
+          <Slider value={chunkSize} min={100} max={1000} step={50} onChange={(_, v) => setChunkSize(v as number)} sx={{ mb: 2 }} />
+
+          <Typography variant="body2">Chunk overlap: {chunkOverlap}</Typography>
+          <Slider value={chunkOverlap} min={0} max={200} step={10} onChange={(_, v) => setChunkOverlap(v as number)} sx={{ mb: 1 }} />
+          <Typography variant="caption" color="text.secondary">
+            Chunk settings apply to the next document you upload.
+          </Typography>
+
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="body2" gutterBottom>
+            Token usage (session)
+          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="caption" color="text.secondary">Prompt</Typography>
+            <Typography variant="caption">{tokens.prompt}</Typography>
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="caption" color="text.secondary">Completion</Typography>
+            <Typography variant="caption">{tokens.completion}</Typography>
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="caption" color="text.secondary">Embedding</Typography>
+            <Typography variant="caption">{tokens.embedding}</Typography>
+          </Box>
+        </Box>
+      </Drawer>
     </Box>
   );
 };

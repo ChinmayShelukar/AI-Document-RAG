@@ -27,14 +27,18 @@ public class DocumentController {
     private final ChatBotClient chatBotClient;
 
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Map<String, Object>> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "chunkSize", required = false) Integer chunkSize,
+            @RequestParam(value = "chunkOverlap", required = false) Integer chunkOverlap) throws IOException {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
         }
 
         log.info("Uploading document: {} ({} bytes)", file.getOriginalFilename(), file.getSize());
 
-        Map<String, Object> result = chatBotClient.uploadDocument(file.getBytes(), file.getOriginalFilename());
+        Map<String, Object> result = chatBotClient.uploadDocument(
+                file.getBytes(), file.getOriginalFilename(), chunkSize, chunkOverlap);
 
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }

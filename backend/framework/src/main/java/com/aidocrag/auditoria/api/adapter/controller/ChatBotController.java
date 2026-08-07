@@ -25,9 +25,10 @@ public class ChatBotController {
    
 
     @PostMapping("/ask/agent")
-    public ResponseEntity<Map<String, String>> ask(@RequestBody @Valid QuestionRequestDTO request) {
+    public ResponseEntity<Map<String, Object>> ask(@RequestBody @Valid QuestionRequestDTO request) {
 
-        Map<String, String> answer = chatBotClient.askAgentAI(request.message());
+        Map<String, Object> answer = chatBotClient.askAgentAI(
+                request.message(), request.topK(), request.model(), request.confidenceThreshold());
 
         return ResponseEntity.status(HttpStatus.OK).body(answer);
     }
