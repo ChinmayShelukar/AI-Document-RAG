@@ -1,0 +1,61 @@
+# Render Blueprint — deploys both backend services from one repo import.
+# Render dashboard: New > Blueprint > pick this repo. It creates both services
+# below. Fill the `sync: false` secrets in the dashboard (they are NOT stored here).
+#
+# Frontend (Vercel) is separate — see HANDOFF.md section 8.
+# After the frontend is live, set ALLOWED_ORIGINS on ai-document-rag-api to the
+# Vercel URL and redeploy.
+
+services:
+  # --- RAG server (Python FastAPI + LlamaIndex) ---
+  - type: web
+    name: ai-document-rag-server
+    runtime: docker
+    plan: free
+    rootDir: backend/rag-server
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /docs
+    envVars:
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: EMBEDDING_MODEL
+        value: models/gemini-embedding-001
+      - key: DOCUMENTS_DIR
+        value: data
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+
+  # --- Spring API (Java 21, multi-module Maven) ---
+  - type: web
+    name: ai-document-rag-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./docker/Dockerfile.java
+    healthCheckPath: /v3/api-docs
+    envVars:
+      - key: JWT_ISSUER
+        value: aidocrag
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: None
+      # RAG server URL — paste the ai-document-rag-server URL after it deploys
+      # (full https://... — RestTemplate needs the scheme).
+      - key: RAG_API_URL
+        sync: false
+      - key: POSTGRES_URL
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Set to the Vercel frontend URL after that deploy, then redeploy.
+      - key: ALLOWED_ORIGINS
+        sync: false
