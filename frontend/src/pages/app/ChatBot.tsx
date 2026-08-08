@@ -17,6 +17,7 @@ import {
   Divider,
   Collapse,
   Chip,
+  useMediaQuery,
 } from "@mui/material";
 import {
   Logout,
@@ -28,6 +29,7 @@ import {
   UploadFileOutlined,
   ExpandMore,
   ExpandLess,
+  Menu as MenuIcon,
 } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -150,6 +152,8 @@ export const ChatBot = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { toggleTheme } = useAppThemeContext();
+  const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
+  const [navOpen, setNavOpen] = useState(false); // mobile sidebar drawer
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -212,100 +216,149 @@ export const ChatBot = () => {
     navigate("/");
   };
 
+  // Sidebar body — shared between the desktop fixed panel and the mobile drawer
+  // so there's one copy of the logo + nav actions.
+  const sidebarContent = (
+    <>
+      <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            bgcolor: "primary.main",
+            width: 40,
+            height: 40,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            color: "primary.contrastText",
+            fontWeight: 700,
+            fontSize: 18,
+            letterSpacing: "1px",
+            userSelect: "none",
+          }}
+        >
+          AI
+        </Box>
+        <Typography variant="h6" fontWeight={700} color="text.primary">
+          AI Document RAG
+        </Typography>
+      </Box>
+      <Box sx={{ height: 4, width: "100%", background: M_STRIPE, mb: 4 }} />
+
+      <List sx={{ mt: "auto", width: "100%", px: 0 }}>
+        <ListItem
+          component={Button}
+          onClick={() => {
+            setSettingsOpen(true);
+            setNavOpen(false);
+          }}
+          sx={{ color: "text.primary", textTransform: "none", px: 2, py: 1 }}
+        >
+          <ListItemIcon sx={{ color: "text.primary", minWidth: 36 }}>
+            <SettingsOutlined />
+          </ListItemIcon>
+          <ListItemText primary="Settings" />
+        </ListItem>
+        <ListItem
+          component={Button}
+          onClick={toggleTheme}
+          sx={{
+            color: theme.palette.info.main,
+            textTransform: "none",
+            "&:hover": {
+              bgcolor: theme.palette.info.main,
+              color: "#fff",
+              "& .MuiListItemIcon-root": { color: "#fff" },
+            },
+            px: 2,
+            py: 1,
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.info.main, minWidth: 36 }}>
+            {theme.palette.mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
+          </ListItemIcon>
+          <ListItemText primary="Switch Theme" />
+        </ListItem>
+        <ListItem
+          component={Button}
+          onClick={handleLogout}
+          sx={{
+            color: theme.palette.error.main,
+            textTransform: "none",
+            "&:hover": {
+              bgcolor: theme.palette.error.main,
+              color: "#fff",
+              "& .MuiListItemIcon-root": { color: "#fff" },
+            },
+            px: 2,
+            py: 1,
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.error.main, minWidth: 36 }}>
+            <Logout />
+          </ListItemIcon>
+          <ListItemText primary="Log out" />
+        </ListItem>
+      </List>
+    </>
+  );
+
   return (
     <Box sx={{ height: "100vh", display: "flex", bgcolor: "background.default" }}>
-      {/* Sidebar — BMW M identity preserved */}
-      <Paper
-        sx={{
-          width: 300,
-          bgcolor: "background.paper",
-          display: "flex",
-          flexDirection: "column",
-          p: 3,
-          borderRight: `1px solid ${theme.palette.divider}`,
-          position: "relative",
-        }}
-      >
-        <Box sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+      {/* Desktop/laptop: fixed 300px sidebar. Phone/tablet: temporary drawer. */}
+      {isMdDown ? (
+        <Drawer anchor="left" open={navOpen} onClose={() => setNavOpen(false)}>
           <Box
             sx={{
-              bgcolor: "primary.main",
-              width: 40,
-              height: 40,
+              width: 280,
+              height: "100%",
+              bgcolor: "background.paper",
               display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "primary.contrastText",
-              fontWeight: 700,
-              fontSize: 18,
-              letterSpacing: "1px",
-              userSelect: "none",
+              flexDirection: "column",
+              p: 3,
             }}
           >
-            AI
+            {sidebarContent}
           </Box>
-          <Typography variant="h6" fontWeight={700} color="text.primary">
-            AI Document RAG
-          </Typography>
-        </Box>
-        <Box sx={{ height: 4, width: "100%", background: M_STRIPE, mb: 4 }} />
-
-        <List sx={{ position: "absolute", bottom: 4, left: 0, width: "100%", px: 0 }}>
-          <ListItem
-            component={Button}
-            onClick={() => setSettingsOpen(true)}
-            sx={{ color: "text.primary", textTransform: "none", px: 2, py: 1 }}
-          >
-            <ListItemIcon sx={{ color: "text.primary", minWidth: 36 }}>
-              <SettingsOutlined />
-            </ListItemIcon>
-            <ListItemText primary="Settings" />
-          </ListItem>
-          <ListItem
-            component={Button}
-            onClick={toggleTheme}
-            sx={{
-              color: theme.palette.info.main,
-              textTransform: "none",
-              "&:hover": {
-                bgcolor: theme.palette.info.main,
-                color: "#fff",
-                "& .MuiListItemIcon-root": { color: "#fff" },
-              },
-              px: 2,
-              py: 1,
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.info.main, minWidth: 36 }}>
-              {theme.palette.mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
-            </ListItemIcon>
-            <ListItemText primary="Switch Theme" />
-          </ListItem>
-          <ListItem
-            component={Button}
-            onClick={handleLogout}
-            sx={{
-              color: theme.palette.error.main,
-              textTransform: "none",
-              "&:hover": {
-                bgcolor: theme.palette.error.main,
-                color: "#fff",
-                "& .MuiListItemIcon-root": { color: "#fff" },
-              },
-              px: 2,
-              py: 1,
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.error.main, minWidth: 36 }}>
-              <Logout />
-            </ListItemIcon>
-            <ListItemText primary="Log out" />
-          </ListItem>
-        </List>
-      </Paper>
+        </Drawer>
+      ) : (
+        <Paper
+          sx={{
+            width: 300,
+            bgcolor: "background.paper",
+            display: "flex",
+            flexDirection: "column",
+            p: 3,
+            borderRight: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          {sidebarContent}
+        </Paper>
+      )}
 
       {/* Main area */}
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+        {/* Mobile top bar with hamburger (only < md) */}
+        {isMdDown && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 1,
+              py: 1,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <IconButton onClick={() => setNavOpen(true)} aria-label="Open menu">
+              <MenuIcon />
+            </IconButton>
+            <Box sx={{ width: 28, height: 4, background: M_STRIPE }} />
+            <Typography variant="subtitle1" fontWeight={700} color="text.primary" noWrap>
+              AI Document RAG
+            </Typography>
+          </Box>
+        )}
+
         {messages.length === 0 ? (
           /* Hero empty-state with drag-drop dropzone */
           <Box
@@ -315,10 +368,16 @@ export const ChatBot = () => {
               flexDirection: "column",
               justifyContent: "center",
               alignItems: "center",
-              p: 4,
+              p: { xs: 2, md: 4 },
             }}
           >
-            <Typography variant="h4" color="text.primary" textAlign="center" gutterBottom>
+            <Typography
+              variant="h4"
+              color="text.primary"
+              textAlign="center"
+              gutterBottom
+              sx={{ fontSize: { xs: "1.75rem", md: "2.5rem" } }}
+            >
               Talk to your documents
             </Typography>
             <Typography variant="body1" color="text.secondary" textAlign="center" mb={4}>
@@ -329,7 +388,7 @@ export const ChatBot = () => {
               sx={{
                 width: "100%",
                 maxWidth: 560,
-                minHeight: 320,
+                minHeight: { xs: 220, md: 320 },
                 border: `1px dashed ${isDragActive ? theme.palette.secondary.main : theme.palette.divider}`,
                 bgcolor: isDragActive ? "action.hover" : "transparent",
                 display: "flex",
@@ -337,7 +396,7 @@ export const ChatBot = () => {
                 justifyContent: "center",
                 alignItems: "center",
                 cursor: "pointer",
-                p: 4,
+                p: { xs: 3, md: 4 },
                 transition: "border-color 0.2s",
               }}
             >
@@ -369,7 +428,7 @@ export const ChatBot = () => {
               mx: "auto",
               display: "flex",
               flexDirection: "column",
-              p: 2,
+              p: { xs: 1, md: 2 },
               overflow: "hidden",
             }}
           >
@@ -399,7 +458,7 @@ export const ChatBot = () => {
                     color: msg.sender === "user" ? "secondary.contrastText" : "text.primary",
                     px: 1.5,
                     py: 0.5,
-                    maxWidth: "80%",
+                    maxWidth: { xs: "90%", md: "80%" },
                     animation: "fadeIn 0.4s ease-in",
                     "@keyframes fadeIn": {
                       from: { opacity: 0, transform: "translateY(5px)" },
@@ -484,7 +543,7 @@ export const ChatBot = () => {
 
       {/* Settings drawer */}
       <Drawer anchor="right" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-        <Box sx={{ width: 340, p: 3 }}>
+        <Box sx={{ width: { xs: "85vw", sm: 340 }, maxWidth: 340, p: 3 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
             <Typography variant="h6">Settings</Typography>
             <IconButton onClick={() => setSettingsOpen(false)}>
