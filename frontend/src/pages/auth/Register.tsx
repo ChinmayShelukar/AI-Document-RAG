@@ -67,6 +67,7 @@ export const Register = () => {
     try {
       const response = await api.post("/auth/register", data);
       if (response.status === 200) {
+        localStorage.setItem("authToken", response.data.token);
         navigate("/chat");
       }
     } catch (error: any) {

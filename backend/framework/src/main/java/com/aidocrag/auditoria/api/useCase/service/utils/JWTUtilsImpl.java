@@ -5,7 +5,6 @@ package com.aidocrag.auditoria.api.useCase.service.utils;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -18,8 +17,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.aidocrag.entity.UserDomain;
 import com.aidocrag.exception.JWTException;
 import com.aidocrag.utils.JWTUtils;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -29,8 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class JWTUtilsImpl implements JWTUtils {
-
-    private static final String TOKEN_COOKIE_NAME = "token";
 
     private final Algorithm algorithm;
     private final String ISSUER;
@@ -97,40 +92,6 @@ public class JWTUtilsImpl implements JWTUtils {
             log.warn("Invalid or expired JWT token", e);
             return null;
         }
-    }
-
-    /**
-     * Retrieves the user ID from the "token" cookie present in the HTTP request.
-     *
-     * @param request HTTP request containing the JWT cookie
-     * @return UUID of the user extracted from the token
-     * @throws JWTException if cookie not found, or token is invalid or expired
-     */
-    @Override
-    public UUID getUserIdFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            log.error("No cookies found in request");
-            throw new JWTException("Cookies not found");
-        }
-
-        for (Cookie cookie : cookies) {
-            if (TOKEN_COOKIE_NAME.equals(cookie.getName())) {
-                String token = cookie.getValue();
-                String userId = validateAndExtractUserId(token);
-
-                if (userId == null) {
-                    log.error("Invalid or expired JWT token in cookie");
-                    throw new JWTException("Invalid or expired token");
-                }
-
-                log.info("User ID extracted from cookie: {}", userId);
-                return UUID.fromString(userId);
-            }
-        }
-
-        log.error("JWT token cookie not found");
-        throw new JWTException("Token not found in cookies");
     }
 
     /**

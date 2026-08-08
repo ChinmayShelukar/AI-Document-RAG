@@ -32,7 +32,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import ReactMarkdown from "react-markdown";
-import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useAppThemeContext } from "../../shared/context/ThemeContext";
 import { M_STRIPE } from "../../shared/themes/Dark";
@@ -209,7 +208,7 @@ export const ChatBot = () => {
   };
 
   const handleLogout = () => {
-    Cookies.remove("token");
+    localStorage.removeItem("authToken");
     navigate("/");
   };
 

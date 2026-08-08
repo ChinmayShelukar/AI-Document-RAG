@@ -10,6 +10,12 @@ export const PrivateAppLayout = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // No stored token → not logged in; skip the wasted /isAuth round-trip.
+      if (!localStorage.getItem("authToken")) {
+        setAuthenticated(false);
+        setLoading(false);
+        return;
+      }
       try {
         await api.get("/auth/isAuth");
         setAuthenticated(true);

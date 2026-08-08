@@ -5,5 +5,15 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true,
+});
+
+// Attach the JWT as a Bearer header on every request. Auth is header-based (not a
+// cookie) so it survives the cross-site frontend/API split where browsers block
+// third-party cookies.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });

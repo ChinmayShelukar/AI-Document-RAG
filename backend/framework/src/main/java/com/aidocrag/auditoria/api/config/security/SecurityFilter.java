@@ -1,9 +1,7 @@
 package com.aidocrag.auditoria.api.config.security;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Optional;
 import java.util.UUID;
 
 
@@ -13,12 +11,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.aidocrag.entity.UserDomain;
 import com.aidocrag.repository.UserRepository;
 import com.aidocrag.utils.JWTUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -43,14 +39,15 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 String userId = jwtUtils.validateAndExtractUserId(token);
-                UUID userIdToUUID = UUID.fromString(userId);
 
                 if (userId != null) {
-
-                    Optional<UserDomain> user = userRepository.findById(userIdToUUID);
+                    UUID userIdToUUID = UUID.fromString(userId);
+                    userRepository.findById(userIdToUUID); // validate the user still exists
 
                     var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-                    var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    // principal = userId string, so controllers can read it via
+                    // SecurityContextHolder...getAuthentication().getName()
+                    var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception e) {
@@ -61,17 +58,16 @@ public class SecurityFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Reads the JWT from the Authorization: Bearer header. Header-based (not
+     * cookie) so auth survives a cross-site frontend/API split where browsers
+     * block third-party cookies.
+     */
     private String recoverToken(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-
-        if (cookies == null)
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer "))
             return null;
-
-        return Arrays.stream(cookies)
-                .filter(cookie -> "token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        return header.substring(7);
     }
 
 }
