@@ -1,0 +1,26 @@
+name: keep-warm
+
+# Pings both Render free-tier services so they don't spin down (~15 min idle).
+# Fires every 12 min during the business-hours window only, to stay under
+# Render's ~750 free instance-hours/month across two services (~720h at 12h/day).
+#
+# ponytail: window `3-15` UTC (~08:30-21:20 IST) is the tuning knob — narrow it
+# (e.g. 3-14) if Render ever flags instance-hours; widen for a later demo.
+#
+# NOTE: GitHub disables scheduled workflows after 60 days with NO repo commits.
+# A normal commit cadence keeps it alive. Cron here is best-effort (may lag a few
+# min), which is why 12 min leaves a 3-min buffer under the 15-min sleep.
+
+on:
+  schedule:
+    - cron: "*/12 3-15 * * *"   # every 12 min, 03:00-15:59 UTC
+  workflow_dispatch: {}          # manual "warm it now before a demo" trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping RAG server
+        run: curl -fsS --retry 2 --max-time 120 https://ai-document-rag-server.onrender.com/docs -o /dev/null
+      - name: Ping Spring API
+        run: curl -fsS --retry 2 --max-time 120 https://ai-document-rag-api.onrender.com/v3/api-docs -o /dev/null
