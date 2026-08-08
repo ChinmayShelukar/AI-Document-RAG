@@ -10,6 +10,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.aidocrag.exception.BadRequest;
 import com.aidocrag.exception.Conflict;
@@ -183,6 +185,38 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(buildBody(HttpStatus.UNAUTHORIZED, ex.getMessage()));
+    }
+
+    /**
+     * File upload exceeds the configured multipart size limit → clean 413 instead
+     * of a generic 500, so the user sees an accurate "too large" message.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<?> handleMaxUpload(MaxUploadSizeExceededException ex) {
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(buildBody(HttpStatus.PAYLOAD_TOO_LARGE, "File exceeds the 10MB limit."));
+    }
+
+    /**
+     * The RAG server returned a non-2xx (e.g. 400 unsupported type, 429 quota).
+     * Forward its status + `detail` message instead of masking it as a 500, so the
+     * user sees the real reason.
+     */
+    @ExceptionHandler(RestClientResponseException.class)
+    public ResponseEntity<?> handleRagError(RestClientResponseException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) status = HttpStatus.BAD_GATEWAY;
+        String detail = "The document service could not process this request.";
+        try {
+            Object d = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(ex.getResponseBodyAsString(), Map.class)
+                    .get("detail");
+            if (d != null) detail = d.toString();
+        } catch (Exception ignored) {
+            // non-JSON body — keep the generic detail
+        }
+        return ResponseEntity.status(status).body(buildBody(status, detail));
     }
 
     /**

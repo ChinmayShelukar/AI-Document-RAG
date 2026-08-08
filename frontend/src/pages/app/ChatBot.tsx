@@ -62,8 +62,10 @@ const ACCEPTED = {
   "text/plain": [".txt"],
   "text/markdown": [".md"],
   "text/csv": [".csv"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
 };
-const FILE_CHIPS = ["PDF", "DOCX", "TXT", "MD", "CSV"];
+const FILE_CHIPS = ["PDF", "DOCX", "TXT", "MD", "CSV", "PPTX", "XLSX"];
 
 const TypingDots = () => (
   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -170,8 +172,18 @@ export const ChatBot = () => {
       pushBot(
         `Document **${res.filename}** indexed (${res.chunks} chunk${res.chunks > 1 ? "s" : ""}). Ask me anything about it.`
       );
-    } catch {
-      pushBot("Failed to upload the document. Check the file type and size (max 10MB).");
+    } catch (err: any) {
+      // Prefer the server's specific reason (size vs unsupported type) over a
+      // generic message; 413 = too large, RAG 400 carries a `detail`.
+      const serverMsg =
+        err?.response?.status === 413
+          ? "File exceeds the 10MB limit."
+          : err?.response?.data?.detail || err?.response?.data?.message;
+      pushBot(
+        serverMsg
+          ? `Upload failed: ${serverMsg}`
+          : "Failed to upload the document. Please try again."
+      );
     } finally {
       setUploading(false);
     }

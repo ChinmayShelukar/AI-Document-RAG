@@ -119,3 +119,16 @@ def test_model_allowlist_populated():
     import agent
     assert "llama-3.3-70b-versatile" in agent.ALLOWED_MODELS
     assert all(m for m in agent.ALLOWED_MODELS)  # no empty entries
+
+
+def test_supported_exts_include_office_formats():
+    import agent
+    for ext in (".pdf", ".docx", ".txt", ".md", ".csv", ".pptx", ".xlsx"):
+        assert ext in agent.SUPPORTED_EXTS
+
+
+def test_quota_detection():
+    from app import _quota_exceeded
+    assert _quota_exceeded(Exception("429 You exceeded your current quota"))
+    assert _quota_exceeded(Exception("ResourceExhausted: rate limit"))
+    assert not _quota_exceeded(Exception("some other error"))

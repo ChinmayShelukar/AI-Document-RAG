@@ -1,5 +1,4 @@
 import os
-import shutil
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
@@ -15,6 +14,14 @@ from agent import (
 app = FastAPI()
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10MB
+
+
+def _quota_exceeded(exc: Exception) -> bool:
+    """True if the error is a Gemini/Google rate-limit (429). Big docs make many
+    embedding calls and can blow the free-tier quota — surface that clearly
+    instead of a raw 500."""
+    s = str(exc).lower()
+    return "429" in s or "resourceexhausted" in s or "quota" in s or "rate limit" in s
 
 
 class QuestionRequest(BaseModel):
@@ -56,6 +63,11 @@ async def ask_question(request: QuestionRequest):
             "tokens": {k: after[k] - before[k] for k in after},
         }
     except Exception as e:
+        if _quota_exceeded(e):
+            raise HTTPException(
+                status_code=429,
+                detail="Embedding/LLM quota exceeded. Please wait a minute and try again.",
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -90,4 +102,9 @@ async def ingest_document(
     except HTTPException:
         raise
     except Exception as e:
+        if _quota_exceeded(e):
+            raise HTTPException(
+                status_code=429,
+                detail="Embedding quota exceeded. Try a smaller document or wait a minute before retrying.",
+            )
         raise HTTPException(status_code=500, detail=str(e))

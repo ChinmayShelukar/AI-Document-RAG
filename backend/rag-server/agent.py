@@ -24,7 +24,7 @@ documents_dir = os.getenv("DOCUMENTS_DIR")
 ALLOWED_MODELS = [groq_model, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 ALLOWED_MODELS = [m for i, m in enumerate(ALLOWED_MODELS) if m and m not in ALLOWED_MODELS[:i]]
 
-SUPPORTED_EXTS = {".pdf", ".docx", ".txt", ".md", ".csv"}
+SUPPORTED_EXTS = {".pdf", ".docx", ".txt", ".md", ".csv", ".pptx", ".xlsx"}
 
 # Configure embeddings (Google Gemini hosted API — no local model / GPU / torch,
 # so the server fits in a free 512MB host instead of needing ~1GB for HuggingFace).
