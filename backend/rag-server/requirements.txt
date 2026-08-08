@@ -3,12 +3,10 @@ fastapi
 uvicorn
 python-multipart
 llama-index-core
+llama-index-readers-file
 llama-index-llms-groq
 llama-index-embeddings-gemini
 pypdf
 docx2txt
 python-pptx
 openpyxl
-# ponytail: pandas is the heaviest dep (xlsx reader). If the free 512MB Render
-# tier OOMs on boot, drop pandas + openpyxl and remove .xlsx from SUPPORTED_EXTS.
-pandas
