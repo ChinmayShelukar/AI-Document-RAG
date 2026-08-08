@@ -5,7 +5,7 @@ python-multipart
 llama-index-core
 llama-index-readers-file
 llama-index-llms-groq
-llama-index-embeddings-gemini
+llama-index-embeddings-google-genai
 pypdf
 docx2txt
 python-pptx

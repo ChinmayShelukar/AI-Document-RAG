@@ -5,7 +5,7 @@ from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
 from llama_index.llms.groq import Groq
-from llama_index.embeddings.gemini import GeminiEmbedding
+from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 
 # Path to .env
 env_path = Path('.') / 'config' / '.env'
@@ -28,7 +28,8 @@ SUPPORTED_EXTS = {".pdf", ".docx", ".txt", ".md", ".csv", ".pptx", ".xlsx"}
 
 # Configure embeddings (Google Gemini hosted API — no local model / GPU / torch,
 # so the server fits in a free 512MB host instead of needing ~1GB for HuggingFace).
-Settings.embed_model = GeminiEmbedding(
+# Uses the current google-genai SDK; EMBEDDING_MODEL stays "models/gemini-embedding-001".
+Settings.embed_model = GoogleGenAIEmbedding(
     model_name=embedding_model,
     api_key=google_api_key,
 )
