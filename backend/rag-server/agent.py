@@ -61,6 +61,23 @@ def get_query_engine(top_k: int = 5, model: str | None = None):
     return index.as_query_engine(similarity_top_k=top_k, llm=llm)
 
 
+def _looks_like_binary(text: str) -> bool:
+    """True if 'text' is raw file bytes, not extracted document text.
+
+    Guards the SimpleDirectoryReader raw-bytes fallback: when the readers package
+    fails to load (e.g. missing pandas), it reads files as bytes and we'd embed
+    %PDF/PK garbage into hundreds of junk chunks. Cheap sniff, not a MIME parser.
+    """
+    head = text.lstrip()[:8]
+    if head.startswith("%PDF") or head.startswith("PK\x03\x04"):
+        return True
+    sample = text[:2000]
+    if not sample:
+        return True
+    nonprintable = sum(1 for c in sample if not c.isprintable() and c not in "\r\n\t")
+    return nonprintable / len(sample) > 0.30
+
+
 def ingest_file(file_path: str, chunk_size: int = 500, chunk_overlap: int = 50) -> int:
     """Replace the index with just the uploaded file and make it the active doc.
 
@@ -69,6 +86,12 @@ def ingest_file(file_path: str, chunk_size: int = 500, chunk_overlap: int = 50) 
     """
     global index, active_filename
     docs = SimpleDirectoryReader(input_files=[file_path]).load_data()
+    extracted = "".join(d.text for d in docs)
+    if _looks_like_binary(extracted):
+        raise ValueError(
+            f"Could not extract text from '{os.path.basename(file_path)}' — the file "
+            "reader is missing or the file is corrupt. Ingest aborted."
+        )
     splitter = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     nodes = splitter.get_nodes_from_documents(docs)
     index = VectorStoreIndex(nodes)

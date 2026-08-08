@@ -1,0 +1,17 @@
+# Post-deploy smoke test: uploads a REAL PDF to the live stack and asserts a
+# grounded answer. Manual trigger (run after a deploy) — not on every push, to
+# avoid waking the free Render dynos constantly. Catches silent ingest breakage
+# (the pandas/readers bug) that unit tests with mocks can't.
+name: prod-smoke
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run prod smoke test
+        working-directory: backend/rag-server
+        run: bash smoke_prod.sh

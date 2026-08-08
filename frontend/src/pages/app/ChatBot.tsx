@@ -42,6 +42,7 @@ import {
   type Source,
   type TokenUsage,
 } from "../../shared/services/api/chat/chatService";
+import { ACCEPTED, FILE_CHIPS, uploadErrorMessage } from "./uploadTypes";
 
 interface Message {
   id: string;
@@ -55,17 +56,6 @@ const MODELS = [
   { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)" },
   { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Groq)" },
 ];
-
-const ACCEPTED = {
-  "application/pdf": [".pdf"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-  "text/plain": [".txt"],
-  "text/markdown": [".md"],
-  "text/csv": [".csv"],
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-};
-const FILE_CHIPS = ["PDF", "DOCX", "TXT", "MD", "CSV", "PPTX", "XLSX"];
 
 const TypingDots = () => (
   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -174,16 +164,8 @@ export const ChatBot = () => {
       );
     } catch (err: any) {
       // Prefer the server's specific reason (size vs unsupported type) over a
-      // generic message; 413 = too large, RAG 400 carries a `detail`.
-      const serverMsg =
-        err?.response?.status === 413
-          ? "File exceeds the 10MB limit."
-          : err?.response?.data?.detail || err?.response?.data?.message;
-      pushBot(
-        serverMsg
-          ? `Upload failed: ${serverMsg}`
-          : "Failed to upload the document. Please try again."
-      );
+      // generic message. Picker is unit-tested in uploadTypes.test.ts.
+      pushBot(uploadErrorMessage(err));
     } finally {
       setUploading(false);
     }

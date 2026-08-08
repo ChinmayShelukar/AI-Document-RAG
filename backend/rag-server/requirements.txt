@@ -10,3 +10,8 @@ pypdf
 docx2txt
 python-pptx
 openpyxl
+# REQUIRED, not optional: llama-index-readers-file hard-imports pandas at load
+# (readers/file/tabular/base.py). Without it, SimpleDirectoryReader silently falls
+# back to reading files as raw bytes → every upload ingests %PDF garbage. Pinned so
+# Docker (python:3.11-slim) grabs the prebuilt cp311 wheel — no slow source build.
+pandas==2.2.3
