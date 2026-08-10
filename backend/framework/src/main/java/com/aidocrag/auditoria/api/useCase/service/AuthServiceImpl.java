@@ -14,7 +14,6 @@ import com.aidocrag.auditoria.api.entity.User;
 import com.aidocrag.entity.UserDomain;
 import com.aidocrag.exception.Conflict;
 import com.aidocrag.exception.InternalServerError;
-import com.aidocrag.exception.NotFound;
 import com.aidocrag.exception.Unauthorized;
 import com.aidocrag.repository.UserRepository;
 import com.aidocrag.service.AuthService;
@@ -45,14 +44,14 @@ public class AuthServiceImpl implements AuthService {
         UserDomain record = this.userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("User not found for email: {}", email);
-                    return new NotFound("Invalid credentials");
+                    return new Unauthorized("Invalid credentials");
                 });
 
         final boolean passwordMatched = passwordEncoder.matches(password, record.password());
 
         if (!passwordMatched) {
             log.warn("Invalid password attempt for user: {}", email);
-            throw new NotFound("Invalid credentials");
+            throw new Unauthorized("Invalid credentials");
         }
 
         final String token = generateToken(record);

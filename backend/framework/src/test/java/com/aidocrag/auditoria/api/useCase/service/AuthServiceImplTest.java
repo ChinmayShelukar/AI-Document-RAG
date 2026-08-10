@@ -20,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.aidocrag.entity.UserDomain;
 import com.aidocrag.exception.Conflict;
-import com.aidocrag.exception.NotFound;
 import com.aidocrag.exception.Unauthorized;
 import com.aidocrag.repository.UserRepository;
 import com.aidocrag.utils.JWTUtils;
@@ -55,22 +54,22 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void login_throwsNotFound_whenEmailUnknown() {
+    void login_throwsUnauthorized_whenEmailUnknown() {
         when(userRepository.findByEmail("ghost@demo.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login("ghost@demo.com", "pw"))
-                .isInstanceOf(NotFound.class)
+                .isInstanceOf(Unauthorized.class)
                 .hasMessage("Invalid credentials");
     }
 
     @Test
-    void login_throwsNotFound_whenPasswordWrong() {
+    void login_throwsUnauthorized_whenPasswordWrong() {
         UserDomain user = sampleUser(UUID.randomUUID());
         when(userRepository.findByEmail("jane@demo.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
 
         assertThatThrownBy(() -> authService.login("jane@demo.com", "wrong"))
-                .isInstanceOf(NotFound.class)
+                .isInstanceOf(Unauthorized.class)
                 .hasMessage("Invalid credentials");
         // never mints a token on a bad password
         verify(jwtUtils, never()).generateUserToken(any());

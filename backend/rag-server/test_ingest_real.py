@@ -23,6 +23,7 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 # (filename, a word we expect to find in the cleanly-extracted text)
 CASES = [
     ("sample.pdf", "Insurance"),
+    ("sample.docx", "Insurance"),
     ("sample.txt", "quick brown fox"),
     ("sample.md", "Markdown"),
     ("sample.csv", "Alice"),
